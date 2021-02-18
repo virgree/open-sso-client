@@ -75,41 +75,36 @@ public class SSOFilter implements Filter {
             }
 
             if (user != null) {   
-                holdUser(user, request); // 将user存放，供业务系统使用
-                chain.doFilter(request, response); // 请求继续向下执行
+                holdUser(user, request); // 存放user信息，供业务系统使用
+                chain.doFilter(request, response);
             } else {
-                // 删除无效的xtoken cookie
                 CookieUtil.deleteCookie("xtoken", response, "/");
-                // 引导浏览器重定向到服务端执行登录校验
+                // 重定向到服务端执行登录校验
                 loginCheck(request, response);
             }
         } else {
             String xtokenParam = pasrextokenParam(request);
             if (xtokenParam == null) {
-                // 请求中中没有xtokenParam，引导浏览器重定向到服务端执行登录校验
+                // 请求中中没有xtokenParam, 重定向到服务端执行登录校验
                 loginCheck(request, response);
             } else if (xtokenParam.length() == 0) {
-                // 有xtokenParam，但内容为空，表示到服务端loginCheck后，得到的结果是未登录
                 response.sendError(403);
             } else {
-                // 让浏览器向本链接发起一次重定向，此过程去除xtokenParam，将xtoken写入cookie
                 redirectToSelf(xtokenParam, request, response);
             }
         }
     }
 
-    // 从参数中获取服务端传来的xtoken后，执行一个到本链接的重定向，将xtoken写入cookie
-    // 重定向后再发来的请求就存在有效xtoken参数了
+    // 从参数中获取服务端传来的xtoken后，重定向将xtoken写入cookie
     private void redirectToSelf(String xtoken, HttpServletRequest request, HttpServletResponse response) throws IOException {
-        final String PARANAME = "__xtoken_param__="; 
-        // 此处拼接redirect的url，去除xtoken参数部分
+        final String PARANAME = "__xtoken_param__=";
         StringBuffer location = request.getRequestURL();
        
         String qstr = request.getQueryString();
         int index = qstr.indexOf(PARANAME);
-        if (index > 0) { // 还有其它参数，para1=param1&param2=param2&__xtoken_param__=xxx是最后一个参数
+        if (index > 0) {
             qstr = "?" + qstr.substring(0, qstr.indexOf(PARANAME) - 1);
-        } else { // 没有其它参数 qstr = __xtoken_param__=xxx
+        } else {
             qstr = "";
         }
 
@@ -128,7 +123,6 @@ public class SSOFilter implements Filter {
         final String PARANAME = "__xtoken_param__=";
         
         String qstr = request.getQueryString();
-      // a=2&b=xxx&__xtoken_param__=xxxxxxx
         if (qstr == null) {
             return null;
         }
@@ -141,15 +135,14 @@ public class SSOFilter implements Filter {
         }
     }
 
-    // 引导浏览器重定向到服务端执行登录校验
+    // 重定向到服务端执行登录校验
     private void loginCheck(HttpServletRequest request, HttpServletResponse response) throws IOException {
         //jsonp
         if ("XMLHttpRequest".equals(request.getHeader("x-requested-with"))) {
-            // 400 状态表示请求格式错误，服务器没有理解请求，此处返回400状态表示未登录时服务器拒绝此ajax请求
             response.sendError(400);
         } else {
-            String qstr = makeQueryString(request); // 将所有请求参数重新拼接成queryString
-            String backUrl = request.getRequestURL() + qstr; // 回调url
+            String qstr = makeQueryString(request); // 组装queryString
+            String backUrl = request.getRequestURL() + qstr;
             String location = ssoServerUrl + "/login?backUrl=" + URLEncoder.encode(backUrl, "utf-8");
             if (notLoginOnFail) {
                 location += "&notLogin=true";
@@ -159,7 +152,6 @@ public class SSOFilter implements Filter {
 
     }
 
-    // 将所有请求参数重新拼接成queryString
     private String makeQueryString(HttpServletRequest request) throws UnsupportedEncodingException {
         StringBuilder builder = new StringBuilder();
         Enumeration<String> paraNames = request.getParameterNames();
@@ -186,7 +178,6 @@ public class SSOFilter implements Filter {
     // 判断请求是否不需要拦截
     private boolean requestIsExclude(ServletRequest request) {
 
-        // 没有设定excludes时，所以经过filter的请求都需要被处理
         if (StringUtil.isEmpty(excludes)) {
             return false;
         }
